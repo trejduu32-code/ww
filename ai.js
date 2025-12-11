@@ -1,8 +1,7 @@
 /**
  * AI Chatbot Widget - WebLLM Powered
  * One-line integration: <script src="ai-chatbot-widget.js"></script>
- * 
- * no right to change the code!
+ * * no right to change the code!
  * Features:
  * - Runs 100% locally in browser (WebLLM + WebGPU)
  * - No API keys or server required
@@ -34,6 +33,15 @@
             recommended: "Quick responses, low bandwidth"
         },
         {
+            id: "Qwen3-0.6B-q4f16_1-MLC",
+            name: "Qwen3 0.6B",
+            size: "~400MB",
+            params: "600M",
+            speed: "⚡⚡⚡ Very Fast",
+            description: "Latest Qwen model, improved efficiency and capabilities",
+            recommended: "General chat, quick tasks"
+        },
+        {
             id: "Qwen2-0.5B-Instruct-q4f16_1-MLC",
             name: "Qwen2 0.5B",
             size: "~300MB",
@@ -59,6 +67,15 @@
             speed: "⚡⚡ Fast",
             description: "Meta's efficient small model, high quality",
             recommended: "Conversations, reasoning"
+        },
+        {
+            id: "Qwen3-1.7B-q4f16_1-MLC",
+            name: "Qwen3 1.7B",
+            size: "~1.1GB",
+            params: "1.7B",
+            speed: "⚡ Fast",
+            description: "More capable Qwen3 model with enhanced reasoning",
+            recommended: "Detailed conversations, multi-step tasks"
         },
         {
             id: "gemma-2b-it-q4f16_1-MLC",
@@ -113,16 +130,7 @@
             speed: "🐌 Slower (Powerful)",
             description: "Large powerful model, highest quality",
             recommended: "Best quality, complex tasks"
-        },
-        {
-            id: "SmolLM2-360M-Instruct-q4f32_1-MLC",
-            name: "SmolLM2-360M",
-            size: "~300MB",
-            params: "360M",
-            speed: "⚡⚡⚡ Very Fast",
-            description: "Small but capable, balanced performance",
-            recommended: "General chat, quick tasks"
-        },
+        }
     ];
     
     const SYSTEM_PROMPT = "You are a helpful, friendly AI assistant. You provide concise, accurate, and helpful responses. You are knowledgeable, polite, and aim to assist users with their questions.";
@@ -254,6 +262,13 @@
                     </div>
                     
                     <div class="flex items-center space-x-2">
+                        <button id="aiWidgetChangeModel" class="p-2 hover:bg-white/10 rounded-lg transition-colors" title="Change AI model">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </button>
+                        
                         <button id="aiWidgetDarkMode" class="p-2 hover:bg-white/10 rounded-lg transition-colors" title="Toggle dark mode">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
@@ -336,6 +351,7 @@
         const status = document.getElementById('aiWidgetStatus');
         const modelSelector = document.getElementById('aiWidgetModelSelector');
         const modelList = document.getElementById('aiWidgetModelList');
+        const changeModelBtn = document.getElementById('aiWidgetChangeModel');
         
         // Dark mode
         if (localStorage.getItem('aiWidget_darkMode') === 'true') {
@@ -346,6 +362,21 @@
             widgetContainer.classList.toggle('dark');
             const isDark = widgetContainer.classList.contains('dark');
             localStorage.setItem('aiWidget_darkMode', isDark);
+        });
+        
+        // Change model button
+        changeModelBtn.addEventListener('click', () => {
+            // Clear the current model and engine
+            selectedModel = null;
+            engine = null;
+            isModelLoaded = false;
+            
+            // Clear chat messages
+            messages.innerHTML = '';
+            chatHistory = [];
+            
+            // Show model selector
+            showModelSelector();
         });
         
         // Toggle window
@@ -390,9 +421,21 @@
                 `;
                 
                 card.addEventListener('click', () => {
+                    // Dispose of the current engine if it exists
+                    if (engine && typeof engine.unload === 'function') {
+                        engine.unload();
+                    }
+                    
                     selectedModel = model.id;
                     localStorage.setItem('aiWidget_selectedModel', model.id);
                     modelSelector.classList.add('hidden');
+                    
+                    // Reset engine and messages when changing model
+                    engine = null;
+                    isModelLoaded = false;
+                    messages.innerHTML = '';
+                    chatHistory = [];
+                    
                     addMessage('system', `Selected: ${model.name} (${model.size}). Loading model...`);
                     initializeModel(model.id);
                 });
